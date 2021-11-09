@@ -36,6 +36,7 @@ class RatingBar extends StatefulWidget {
     this.maxRating,
     this.textDirection,
     this.unratedColor,
+    this.onRatingEnd,
     this.allowHalfRating = false,
     this.direction = Axis.horizontal,
     this.glow = true,
@@ -63,6 +64,7 @@ class RatingBar extends StatefulWidget {
     this.maxRating,
     this.textDirection,
     this.unratedColor,
+    this.onRatingEnd,
     this.allowHalfRating = false,
     this.direction = Axis.horizontal,
     this.glow = true,
@@ -83,6 +85,8 @@ class RatingBar extends StatefulWidget {
   ///
   /// [updateOnDrag] can be used to change the behaviour how the callback reports the update.
   final ValueChanged<double> onRatingUpdate;
+
+  final ValueChanged<double>? onRatingEnd;
 
   /// Defines color for glow.
   ///
@@ -230,7 +234,7 @@ class _RatingBarState extends State<RatingBar> {
         direction: widget.direction,
         children: List.generate(
           widget.itemCount,
-          (index) => _buildRating(context, index),
+              (index) => _buildRating(context, index),
         ),
       ),
     );
@@ -267,11 +271,11 @@ class _RatingBarState extends State<RatingBar> {
             fit: BoxFit.contain,
             child: _isRTL
                 ? Transform(
-                    transform: Matrix4.identity()..scale(-1.0, 1.0, 1.0),
-                    alignment: Alignment.center,
-                    transformHitTests: false,
-                    child: ratingWidget!.half,
-                  )
+              transform: Matrix4.identity()..scale(-1.0, 1.0, 1.0),
+              alignment: Alignment.center,
+              transformHitTests: false,
+              child: ratingWidget!.half,
+            )
                 : ratingWidget!.half,
           ),
         );
@@ -292,7 +296,7 @@ class _RatingBarState extends State<RatingBar> {
     return IgnorePointer(
       ignoring: widget.ignoreGestures,
       child: GestureDetector(
-        onTapDown: (details) {
+        onTapUp: (details) {
           double value;
           if (index == 0 && (_rating == 1 || _rating == 0.5)) {
             value = 0;
@@ -305,6 +309,7 @@ class _RatingBarState extends State<RatingBar> {
 
           value = math.max(value, widget.minRating);
           widget.onRatingUpdate(value);
+          if(widget.onRatingEnd != null) widget.onRatingEnd!(value);
           _rating = value;
           setState(() {});
         },
@@ -364,7 +369,8 @@ class _RatingBarState extends State<RatingBar> {
       } else {
         i = _pos.dy / (widget.itemSize + widget.itemPadding.vertical);
       }
-      var currentRating = widget.allowHalfRating ? i : i.round().toDouble();
+      //var currentRating = widget.allowHalfRating ? i : i.round().toDouble();
+      var currentRating = widget.allowHalfRating ? double.parse(i.toStringAsFixed(1)) : i.round().toDouble();
       if (currentRating > widget.itemCount) {
         currentRating = widget.itemCount.toDouble();
       }
@@ -373,6 +379,10 @@ class _RatingBarState extends State<RatingBar> {
       }
       if (_isRTL && widget.direction == Axis.horizontal) {
         currentRating = widget.itemCount - currentRating;
+      }
+
+      if(widget.allowHalfRating && (currentRating * 10) % 5 != 0) {
+        return;
       }
 
       _rating = currentRating.clamp(_minRating, _maxRating);
@@ -388,6 +398,7 @@ class _RatingBarState extends State<RatingBar> {
   void _onDragEnd(DragEndDetails details) {
     _glow.value = false;
     widget.onRatingUpdate(iconRating);
+    if(widget.onRatingEnd != null) widget.onRatingEnd!(iconRating);
     iconRating = 0.0;
   }
 }
@@ -414,32 +425,32 @@ class _HalfRatingWidget extends StatelessWidget {
       width: size,
       child: enableMask
           ? Stack(
-              fit: StackFit.expand,
-              children: [
-                FittedBox(
-                  fit: BoxFit.contain,
-                  child: _NoRatingWidget(
-                    child: child,
-                    size: size,
-                    unratedColor: unratedColor,
-                    enableMask: enableMask,
-                  ),
-                ),
-                FittedBox(
-                  fit: BoxFit.contain,
-                  child: ClipRect(
-                    clipper: _HalfClipper(
-                      rtlMode: rtlMode,
-                    ),
-                    child: child,
-                  ),
-                ),
-              ],
-            )
-          : FittedBox(
+        fit: StackFit.expand,
+        children: [
+          FittedBox(
+            fit: BoxFit.contain,
+            child: _NoRatingWidget(
               child: child,
-              fit: BoxFit.contain,
+              size: size,
+              unratedColor: unratedColor,
+              enableMask: enableMask,
             ),
+          ),
+          FittedBox(
+            fit: BoxFit.contain,
+            child: ClipRect(
+              clipper: _HalfClipper(
+                rtlMode: rtlMode,
+              ),
+              child: child,
+            ),
+          ),
+        ],
+      )
+          : FittedBox(
+        child: child,
+        fit: BoxFit.contain,
+      ),
     );
   }
 }
@@ -452,17 +463,17 @@ class _HalfClipper extends CustomClipper<Rect> {
   @override
   Rect getClip(Size size) => rtlMode
       ? Rect.fromLTRB(
-          size.width / 2,
-          0.0,
-          size.width,
-          size.height,
-        )
+    size.width / 2,
+    0.0,
+    size.width,
+    size.height,
+  )
       : Rect.fromLTRB(
-          0.0,
-          0.0,
-          size.width / 2,
-          size.height,
-        );
+    0.0,
+    0.0,
+    size.width / 2,
+    size.height,
+  );
 
   @override
   bool shouldReclip(CustomClipper<Rect> oldClipper) => true;
@@ -490,12 +501,12 @@ class _NoRatingWidget extends StatelessWidget {
         fit: BoxFit.contain,
         child: enableMask
             ? ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  unratedColor,
-                  BlendMode.srcIn,
-                ),
-                child: child,
-              )
+          colorFilter: ColorFilter.mode(
+            unratedColor,
+            BlendMode.srcIn,
+          ),
+          child: child,
+        )
             : child,
       ),
     );
