@@ -310,7 +310,7 @@ class _RatingBarState extends State<RatingBar> {
           value = math.max(value, widget.minRating);
           widget.onRatingUpdate(value);
           if(widget.onRatingEnd != null) widget.onRatingEnd!(value);
-          _rating = value;
+          _rating = 0;
           setState(() {});
         },
         onHorizontalDragStart: _isHorizontal ? _onDragStart : null,
@@ -400,6 +400,8 @@ class _RatingBarState extends State<RatingBar> {
     widget.onRatingUpdate(iconRating);
     if(widget.onRatingEnd != null) widget.onRatingEnd!(iconRating);
     iconRating = 0.0;
+    _rating = 0;
+    setState(() {});
   }
 }
 
