@@ -86,7 +86,7 @@ class RatingBar extends StatefulWidget {
   /// [updateOnDrag] can be used to change the behaviour how the callback reports the update.
   final ValueChanged<double> onRatingUpdate;
 
-  final ValueChanged<double>? onRatingEnd;
+  final Function(double, Function)? onRatingEnd;
 
   /// Defines color for glow.
   ///
@@ -220,6 +220,13 @@ class _RatingBarState extends State<RatingBar> {
     super.dispose();
   }
 
+
+  void resetRating() {
+    setState(() {
+      _rating = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final textDirection = widget.textDirection ?? Directionality.of(context);
@@ -309,9 +316,13 @@ class _RatingBarState extends State<RatingBar> {
 
           value = math.max(value, widget.minRating);
           widget.onRatingUpdate(value);
-          if(widget.onRatingEnd != null) widget.onRatingEnd!(value);
-          _rating = 0;
-          setState(() {});
+
+          if(widget.onRatingEnd != null) {
+            widget.onRatingEnd!(value, resetRating);
+          } else {
+            _rating = value;
+            setState(() {});
+          }
         },
         onHorizontalDragStart: _isHorizontal ? _onDragStart : null,
         onHorizontalDragEnd: _isHorizontal ? _onDragEnd : null,
@@ -398,9 +409,12 @@ class _RatingBarState extends State<RatingBar> {
   void _onDragEnd(DragEndDetails details) {
     _glow.value = false;
     widget.onRatingUpdate(iconRating);
-    if(widget.onRatingEnd != null) widget.onRatingEnd!(iconRating);
+
+    if(widget.onRatingEnd != null) {
+      widget.onRatingEnd!(iconRating, resetRating);
+    }
+
     iconRating = 0.0;
-    _rating = 0;
     setState(() {});
   }
 }
